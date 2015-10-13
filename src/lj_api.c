@@ -1020,6 +1020,9 @@ LUA_API void lua_rawseti(lua_State *L, int idx, int n)
   GCtab *t = tabV(index2adr(L, idx));
   TValue *dst, *src;
   lj_checkapi_slot(1);
+  if (lj_tab_isro(t)) {
+    lj_err_msg(L, LJ_ERR_TABRO);
+  }
   dst = lj_tab_setint(L, t, n);
   src = L->top-1;
   copyTV(L, dst, src);
@@ -1041,6 +1044,9 @@ LUA_API int lua_setmetatable(lua_State *L, int idx)
   }
   g = G(L);
   if (tvistab(o)) {
+    if (lj_tab_isro(tabV(o))) {
+      lj_err_msg(L, LJ_ERR_TABRO);
+    }
     setgcref(tabV(o)->metatable, obj2gco(mt));
     if (mt)
       lj_gc_objbarriert(L, tabV(o), mt);

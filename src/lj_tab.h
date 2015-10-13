@@ -52,6 +52,8 @@ static LJ_AINLINE Node *hashmask(const GCtab *t, uint32_t hash)
 
 #define hsize2hbits(s)	((s) ? ((s)==1 ? 1 : 1+lj_fls((uint32_t)((s)-1))) : 0)
 
+#define LJ_RO_COLOSIZE (LJ_MAX_COLOSIZE+1)
+
 LJ_FUNCA GCtab *lj_tab_new(lua_State *L, uint32_t asize, uint32_t hbits);
 LJ_FUNC GCtab *lj_tab_new_ah(lua_State *L, int32_t a, int32_t h);
 #if LJ_HASJIT
@@ -62,6 +64,8 @@ LJ_FUNC void LJ_FASTCALL lj_tab_clear(GCtab *t);
 LJ_FUNC void LJ_FASTCALL lj_tab_free(global_State *g, GCtab *t);
 LJ_FUNC void lj_tab_resize(lua_State *L, GCtab *t, uint32_t asize, uint32_t hbits);
 LJ_FUNCA void lj_tab_reasize(lua_State *L, GCtab *t, uint32_t nasize);
+
+LJ_FUNC void LJ_FASTCALL lj_tab_set_readonly(lua_State *L, GCtab *t);
 
 /* Caveat: all getters except lj_tab_get() can return NULL! */
 
@@ -82,6 +86,8 @@ LJ_FUNC TValue *lj_tab_set(lua_State *L, GCtab *t, cTValue *key);
   (inarray((t), (key)) ? arrayslot((t), (key)) : lj_tab_getinth((t), (key)))
 #define lj_tab_setint(L, t, key) \
   (inarray((t), (key)) ? arrayslot((t), (key)) : lj_tab_setinth(L, (t), (key)))
+
+#define lj_tab_isro(t) ((t)->colo == (LJ_MAX_COLOSIZE+1))
 
 LJ_FUNC uint32_t LJ_FASTCALL lj_tab_keyindex(GCtab *t, cTValue *key);
 LJ_FUNCA int lj_tab_next(GCtab *t, cTValue *key, TValue *o);
