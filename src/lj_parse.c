@@ -1824,6 +1824,10 @@ static void expr_table(LexState *ls, ExpDesc *e)
 	}
       }
     }
+    /* set the template table as readonly */
+    if (t->colo == 0) {
+      lj_tab_set_readonly(ls->L, t);
+    }
     lj_gc_check(fs->L);
   }
 }
