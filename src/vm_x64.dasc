@@ -286,6 +286,13 @@
 |.endmacro
 |.macro checkstr, reg, target; checktp reg, LJ_TSTR, target; .endmacro
 |.macro checktab, reg, target; checktp reg, LJ_TTAB, target; .endmacro
+|// Byte bitfield comparison, readonly is at bit 8, so left-shift 1 and check CF
+|.macro checktabro, reg, target;
+|  mov r11b, byte TAB:reg->flags
+|  shl r11b, (9-LJ_RO_BIT)
+|  jc target
+|.endmacro
+|//.macro checktabro, reg, target; cmp byte TAB:reg->readonly, LJ_RO_COLOSIZE; je target; .endmacro
 |.macro checkfunc, reg, target; checktp reg, LJ_TFUNC, target; .endmacro
 |
 |.macro checknumx, reg, target, jump
@@ -1258,6 +1265,7 @@ static void build_subroutines(BuildCtx *ctx)
   |  mov TAB:RB, [BASE]
   |  mov TAB:TMPR, TAB:RB
   |  checktab TAB:RB, ->fff_fallback
+  |  checktabro RB, ->fff_fallback
   |  // Fast path: no mt for table yet and not clearing the mt.
   |  cmp aword TAB:RB->metatable, 0; jne ->fff_fallback
   |  mov TAB:RA, [BASE+8]
@@ -3782,6 +3790,7 @@ static void build_ins(BuildCtx *ctx, BCOp op, int defop)
     |  mov TAB:RB, [BASE+RB*8]
     |  mov RC, [BASE+RC*8]
     |  checktab TAB:RB, ->vmeta_tsetv
+    |  checktabro RB, ->vmeta_tsetv
     |
     |  // Integer key?
     |.if DUALNUM
@@ -3833,6 +3842,7 @@ static void build_ins(BuildCtx *ctx, BCOp op, int defop)
     |  mov STR:RC, [KBASE+RC*8]
     |  checktab TAB:RB, ->vmeta_tsets
     |->BC_TSETS_Z:	// RB = GCtab *, RC = GCstr *
+    |  checktabro RB, ->vmeta_tsetv
     |  mov TMPRd, TAB:RB->hmask
     |  and TMPRd, STR:RC->sid
     |  imul TMPRd, #NODE

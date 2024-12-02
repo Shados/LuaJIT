@@ -1084,7 +1084,7 @@ int lj_record_mm_lookup(jit_State *J, RecordIndex *ix, MMS mm)
   GCtab *mt;
   if (tref_istab(ix->tab)) {
     mt = tabref(tabV(&ix->tabv)->metatable);
-    mix.tab = emitir(IRT(IR_FLOAD, IRT_TAB), ix->tab, IRFL_TAB_META);   
+    mix.tab = emitir(IRT(IR_FLOAD, IRT_TAB), ix->tab, IRFL_TAB_META);
     check_readonly_mt(J, &mix, mt);
   } else if (tref_isudata(ix->tab)) {
     int udtype = udataV(&ix->tabv)->udtype;
@@ -1579,7 +1579,7 @@ TRef lj_record_idx(jit_State *J, RecordIndex *ix)
   if (tref_isk(ix->tab) && lj_tab_isro(tabV(&ix->tabv)) && tref_isk(ix->key)) {
     GCtab *t = tabV(&ix->tabv);
     cTValue* value = lj_tab_get(J->L, t, &ix->keyv);
-    
+
     /* TODO: Change this when write only tables are added to revert to a normal table lookup */
     if (tvisnil(value)) {
       return TREF_NIL;
@@ -1617,8 +1617,11 @@ TRef lj_record_idx(jit_State *J, RecordIndex *ix)
     int keybarrier = tref_isgcv(ix->key) && !tref_isnil(ix->val);
     TRef tr;
     /* make sure the table stays non readonly */
-    tr = emitir(IRT(IR_FLOAD, IRT_I8), ix->tab, IRFL_TAB_COLO);
-    emitir(IRTG(IR_LT, IRT_I8), tr, lj_ir_kint(J, LJ_MAX_COLOSIZE+1));
+    tr = emitir(IRT(IR_FLOAD, IRT_U8), ix->tab, IRFL_TAB_FLAGS);
+    tr = emitir(IRT(IR_BAND, IRT_U8), tr, lj_ir_kint(J, LJ_RO_BIT_MASK));
+    emitir(IRTG(IR_EQ, IRT_U8), tr, lj_ir_kint(J, 0));
+    // tr = emitir(IRT(IR_FLOAD, IRT_I8), ix->tab, IRFL_TAB_COLO);
+    // emitir(IRTG(IR_LT, IRT_I8), tr, lj_ir_kint(J, LJ_RO_COLOSIZE));
 
     if (tref_ref(xref) < rbref) {  /* HREFK forwarded? */
       lj_ir_rollback(J, rbref);  /* Rollback to eliminate hmask guard. */
@@ -1780,7 +1783,7 @@ static int rec_upvalue_constify(jit_State *J, GCupval *uvp)
 #else
     UNUSED(J);
 #endif
-    /* Allow constifying readonly tables because we know there size can't grow without flushing all traces */
+    /* Allow constifying readonly tables because we know their size can't grow without flushing all traces */
     if (tvistab(o)) {
       GCtab *t = tabV(o);
       /*TODO: tune these or something */

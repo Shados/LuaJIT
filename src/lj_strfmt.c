@@ -526,6 +526,55 @@ GCstr * LJ_FASTCALL lj_strfmt_obj(lua_State *L, cTValue *o)
     if (tvisfunc(o) && isffunc(funcV(o))) {
       p = lj_buf_wmem(p, "builtin#", 8);
       p = lj_strfmt_wint(p, funcV(o)->c.ffid);
+    } else if (tvistab(o)) {
+      p = lj_strfmt_wptr(p, lj_obj_ptr(G(L), o));
+      *p++ = '\0';
+      fprintf(stderr, "-- %s\n", buf);
+
+      GCtab *t = tabV(o);
+
+      /* print readonly status */
+      fprintf(stderr, "-- colo: %d\n", t->colo);
+      fprintf(stderr, "-- isro: %d\n", lj_tab_isro(t));
+      /* print array part */ {
+        uint32_t i, asize = t->asize;
+        fprintf(stderr, "--  a[%d]: ", asize);
+        TValue *array = tvref(t->array);
+        for (i = 0; i < asize; i++) {
+          if (i>0) fprintf(stderr, ", ");
+
+          cTValue *o = &array[i];
+          if (tvisstr(o)) fprintf(stderr, "%s", strdata(strV(o)));
+          else if (tvisnum(o)) fprintf(stderr, "%g", numV(o));
+          else if (tvisnil(o)) fprintf(stderr, "nil");
+          else fprintf(stderr, "?");
+        }
+        fprintf(stderr, "\n");
+      }
+
+      /* print hashmap part */ {
+        uint32_t i, hmask = t->hmask;
+        fprintf(stderr, "--  h[%d]: ", hmask+1);
+        Node *node = noderef(t->node);
+        for (i = 0; i <= hmask; i++) {
+          if (i>0) fprintf(stderr, ", ");
+
+          Node *n = &node[i];
+          cTValue *k = &n->key;
+          cTValue *v = &n->val;
+
+          if (tvisstr(k)) fprintf(stderr, "%s", strdata(strV(k)));
+          else if (tvisnum(k)) fprintf(stderr, "%g", numV(k));
+          else if (tvisnil(k)) fprintf(stderr, "nil");
+          else fprintf(stderr, "?");
+          fprintf(stderr, "=");
+          if (tvisstr(v)) fprintf(stderr, "%s", strdata(strV(v)));
+          else if (tvisnum(v)) fprintf(stderr, "%g", numV(v));
+          else if (tvisnil(v)) fprintf(stderr, "nil");
+          else fprintf(stderr, "?");
+        }
+        fprintf(stderr, "\n");
+      }
     } else {
       p = lj_strfmt_wptr(p, lj_obj_ptr(G(L), o));
     }

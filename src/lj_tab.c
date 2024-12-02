@@ -88,7 +88,8 @@ static GCtab *newtab(lua_State *L, uint32_t asize, uint32_t hbits)
     t = (GCtab *)lj_mem_newgco(L, sizetabcolo(asize));
     t->gct = ~LJ_TTAB;
     t->nomm = (uint8_t)~0;
-    t->colo = (int8_t)asize;
+    t->colo_size = (uint8_t)asize;
+    t->colo = 1;
     setmref(t->array, (TValue *)((char *)t + sizeof(GCtab)));
     setgcrefnull(t->metatable);
     t->asize = asize;
@@ -103,6 +104,7 @@ static GCtab *newtab(lua_State *L, uint32_t asize, uint32_t hbits)
     t = lj_mem_newobj(L, GCtab);
     t->gct = ~LJ_TTAB;
     t->nomm = (uint8_t)~0;
+    t->colo_size = 0;
     t->colo = 0;
     setmref(t->array, NULL);
     setgcrefnull(t->metatable);
@@ -122,6 +124,7 @@ static GCtab *newtab(lua_State *L, uint32_t asize, uint32_t hbits)
   }
   if (hbits)
     newhpart(L, t, hbits);
+  t->readonly = 0;
   return t;
 }
 
@@ -216,22 +219,31 @@ void LJ_FASTCALL lj_tab_free(global_State *g, GCtab *t)
 {
   if (t->hmask > 0)
     lj_mem_freevec(g, noderef(t->node), t->hmask+1, Node);
-  if (t->asize > 0 && LJ_MAX_COLOSIZE != 0 && (t->colo <= 0 || lj_tab_isro(t)))
+  if (t->asize > 0 && LJ_MAX_COLOSIZE != 0 && !t->colo)
     lj_mem_freevec(g, tvref(t->array), t->asize, TValue);
-  if (LJ_MAX_COLOSIZE != 0 && t->colo && !lj_tab_isro(t))
-    lj_mem_free(g, t, sizetabcolo((uint32_t)t->colo & 0x7f));
+  if (LJ_MAX_COLOSIZE != 0 && (t->colo_size > 0))
+    lj_mem_free(g, t, sizetabcolo((uint32_t)t->colo_size));
   else
     lj_mem_freet(g, t);
 }
 
 void LJ_FASTCALL lj_tab_set_readonly(lua_State *L, GCtab *t)
 {
-  /* table has colocated array so we cannot set out custom colocated size */
-  if (t->colo != 0 && !lj_tab_isro(t)) {
-    lj_err_msg(L, LJ_ERR_TABNORO);
-  }
+  // if (t->colo != 0 && !lj_tab_isro(t)) {
+  //   /* Resize the table's array part high enough to separate out the colocated
+  //    * array part, allowing us to re-use colo to track the readonly status. */
+  //   /* Slow, but better than unpredictably throwing an error. */
+  //   int8_t old_colo = t->colo;
+  //   TValue *old_array = tvref(t->array);
+  //   lj_tab_reasize(L, t, LJ_MAX_COLOSIZE);
+  //   /* We immediately free the memory the colocated array occupied, as this
+  //    * won't be done during lj_tab_free for readonly tables. */
+  //   global_State *g = G(L);
+  //   lj_mem_free(g, old_array, ((uint32_t)old_colo & 0x7f) * sizeof(TValue));
+  // }
 
-  t->colo = LJ_MAX_COLOSIZE+1;
+  // t->colo = LJ_RO_COLOSIZE;
+  t->readonly = 1;
 }
 
 /* -- Table resizing ------------------------------------------------------ */
@@ -250,11 +262,12 @@ void lj_tab_resize(lua_State *L, GCtab *t, uint32_t asize, uint32_t hbits)
     uint32_t i;
     if (asize > LJ_MAX_ASIZE)
       lj_err_msg(L, LJ_ERR_TABOV);
-    if (LJ_MAX_COLOSIZE != 0 && t->colo > 0) {
+    if (LJ_MAX_COLOSIZE != 0 && t->colo) {
       /* A colocated array must be separated and copied. */
       TValue *oarray = tvref(t->array);
       array = lj_mem_newvec(L, asize, TValue);
-      t->colo = (int8_t)(t->colo | 0x80);  /* Mark as separated (colo < 0). */
+      t->colo = 0; /* Mark as separated */
+      /* Leave old colo_size intact for when the table is GC'd */
       for (i = 0; i < oldasize; i++)
 	copyTV(L, &array[i], &oarray[i]);
     } else {
@@ -286,7 +299,7 @@ void lj_tab_resize(lua_State *L, GCtab *t, uint32_t asize, uint32_t hbits)
       if (!tvisnil(&array[i]))
 	copyTV(L, lj_tab_setinth(L, t, (int32_t)i), &array[i]);
     /* Physically shrink only separated arrays. */
-    if (LJ_MAX_COLOSIZE != 0 && t->colo <= 0)
+    if (LJ_MAX_COLOSIZE != 0 && !t->colo)
       setmref(t->array, lj_mem_realloc(L, array,
 	      oldasize*sizeof(TValue), asize*sizeof(TValue)));
   }

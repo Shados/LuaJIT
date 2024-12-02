@@ -297,6 +297,10 @@ typedef const TValue cTValue;
 #define LJ_LIGHTUD_BITS_LO	(47 - LJ_LIGHTUD_BITS_SEG)
 #endif
 
+/* Position and mask for readonly status within GCtab flags bitfield */
+#define LJ_RO_BIT 8
+#define LJ_RO_BIT_MASK ((uint8_t) 1 << 8)
+
 /* -- String object ------------------------------------------------------- */
 
 typedef uint32_t StrHash;	/* String hash value. */
@@ -498,7 +502,15 @@ LJ_STATIC_ASSERT(offsetof(Node, val) == 0);
 typedef struct GCtab {
   GCHeader;
   uint8_t nomm;		/* Negative cache for fast metamethods. */
-  int8_t colo;		/* Array colocation. */
+  /* Bitfield containing array colocation & read-only status. */
+  union {
+    struct {
+      uint8_t colo_size : 6;
+      uint8_t colo : 1;
+      uint8_t readonly : 1;
+    };
+    uint8_t flags;
+  };
   MRef array;		/* Array part. */
   GCRef gclist;
   GCRef metatable;	/* Must be at same offset in GCudata. */
