@@ -175,8 +175,15 @@ LJLIB_CF(table_concat)		LJLIB_REC(.)
 LJLIB_CF(table_setreadonly)
 {
   GCtab *t = lj_lib_checktab(L, 1);
-  lj_tab_set_readonly(L, t);
+  lj_tab_setreadonly(t);
   settabV(L, L->top-1, t);
+  return 1;
+}
+
+LJLIB_CF(table_getreadonly)
+{
+  GCtab *t = lj_lib_checktab(L, 1);
+  setboolV(L->top-1, lj_tab_isro(t));
   return 1;
 }
 

@@ -848,6 +848,20 @@ LUA_API void lua_rawgeti(lua_State *L, int idx, int n)
   incr_top(L);
 }
 
+LUA_API void lua_setreadonly(lua_State *L, int idx, int enabled)
+{
+  GCtab *t = tabV(index2adr(L, idx));
+  lj_checkapi(t != tabV(registry(L)), "the registry cannot be marked read-only");
+  t->readonly = enabled;
+}
+
+LUA_API int lua_getreadonly(lua_State *L, int idx)
+{
+  GCtab *t = tabV(index2adr(L, idx));
+  int res = lj_tab_isro(t);
+  return res;
+}
+
 LUA_API int lua_getmetatable(lua_State *L, int idx)
 {
   cTValue *o = index2adr(L, idx);

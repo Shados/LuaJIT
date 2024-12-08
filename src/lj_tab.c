@@ -227,25 +227,6 @@ void LJ_FASTCALL lj_tab_free(global_State *g, GCtab *t)
     lj_mem_freet(g, t);
 }
 
-void LJ_FASTCALL lj_tab_set_readonly(lua_State *L, GCtab *t)
-{
-  // if (t->colo != 0 && !lj_tab_isro(t)) {
-  //   /* Resize the table's array part high enough to separate out the colocated
-  //    * array part, allowing us to re-use colo to track the readonly status. */
-  //   /* Slow, but better than unpredictably throwing an error. */
-  //   int8_t old_colo = t->colo;
-  //   TValue *old_array = tvref(t->array);
-  //   lj_tab_reasize(L, t, LJ_MAX_COLOSIZE);
-  //   /* We immediately free the memory the colocated array occupied, as this
-  //    * won't be done during lj_tab_free for readonly tables. */
-  //   global_State *g = G(L);
-  //   lj_mem_free(g, old_array, ((uint32_t)old_colo & 0x7f) * sizeof(TValue));
-  // }
-
-  // t->colo = LJ_RO_COLOSIZE;
-  t->readonly = 1;
-}
-
 /* -- Table resizing ------------------------------------------------------ */
 
 /* Resize a table to fit the new array/hash part sizes. */

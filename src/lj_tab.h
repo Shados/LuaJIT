@@ -63,7 +63,6 @@ LJ_FUNC void LJ_FASTCALL lj_tab_free(global_State *g, GCtab *t);
 LJ_FUNC void lj_tab_resize(lua_State *L, GCtab *t, uint32_t asize, uint32_t hbits);
 LJ_FUNCA void lj_tab_reasize(lua_State *L, GCtab *t, uint32_t nasize);
 
-LJ_FUNC void LJ_FASTCALL lj_tab_set_readonly(lua_State *L, GCtab *t);
 
 /* Caveat: all getters except lj_tab_get() can return NULL! */
 
@@ -86,6 +85,7 @@ LJ_FUNC TValue *lj_tab_set(lua_State *L, GCtab *t, cTValue *key);
   (inarray((t), (key)) ? arrayslot((t), (key)) : lj_tab_setinth(L, (t), (key)))
 
 #define lj_tab_isro(t) ((t)->readonly == 1)
+#define lj_tab_setreadonly(t) ((t)->readonly = 1)
 
 LJ_FUNC uint32_t LJ_FASTCALL lj_tab_keyindex(GCtab *t, cTValue *key);
 LJ_FUNCA int lj_tab_next(GCtab *t, cTValue *key, TValue *o);

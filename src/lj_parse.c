@@ -1825,7 +1825,7 @@ static void expr_table(LexState *ls, ExpDesc *e)
       }
     }
     /* set the template table as readonly */
-    lj_tab_set_readonly(fs->L, t);
+    lj_tab_setreadonly(t);
     lj_gc_check(fs->L);
   }
 }
